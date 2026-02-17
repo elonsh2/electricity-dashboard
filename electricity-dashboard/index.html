@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electricity Consumption Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f0f4f8;
+    color: #1a202c;
+    padding: 24px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 8px;
+    color: #2d3748;
+  }
+  .subtitle {
+    text-align: center;
+    color: #718096;
+    font-size: 14px;
+    margin-bottom: 28px;
+  }
+  .stats-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px 28px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    text-align: center;
+    min-width: 180px;
+    flex: 1;
+    max-width: 240px;
+  }
+  .stat-card .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #3182ce;
+  }
+  .stat-card .label {
+    font-size: 12px;
+    color: #a0aec0;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .chart-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .chart-card.full-width {
+    grid-column: 1 / -1;
+  }
+  .chart-card h2 {
+    font-size: 16px;
+    color: #4a5568;
+    margin-bottom: 16px;
+    font-weight: 600;
+  }
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: 320px;
+  }
+  .chart-container.tall {
+    height: 400px;
+  }
+  .heatmap-container {
+    overflow-x: auto;
+  }
+  .heatmap-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 11px;
+  }
+  .heatmap-table th, .heatmap-table td {
+    padding: 6px 4px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    min-width: 52px;
+  }
+  .heatmap-table th {
+    background: #f7fafc;
+    font-weight: 600;
+    color: #4a5568;
+    font-size: 11px;
+  }
+  .heatmap-table td {
+    color: #fff;
+    font-weight: 600;
+    font-size: 10px;
+  }
+  /* --- Time Range Comparison Section --- */
+  .compare-section { margin-top: 12px; }
+  .compare-controls {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 18px;
+  }
+  .control-group { display: flex; flex-direction: column; gap: 4px; }
+  .control-group label {
+    font-size: 11px; color: #718096; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .control-group input, .control-group select {
+    padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px;
+    font-size: 14px; background: #f7fafc; color: #2d3748; outline: none; width: 100px;
+  }
+  .control-group input:focus, .control-group select:focus {
+    border-color: #3182ce; box-shadow: 0 0 0 2px rgba(49,130,206,0.15);
+  }
+  .control-group input[type="text"] { width: 150px; }
+  .btn {
+    padding: 8px 18px; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: #3182ce; color: white; }
+  .btn-primary:hover { background: #2b6cb0; }
+  .btn-danger {
+    background: #fc8181; color: white; padding: 4px 10px; font-size: 11px; border-radius: 6px;
+  }
+  .btn-danger:hover { background: #f56565; }
+  .btn-preset {
+    background: #edf2f7; color: #4a5568; font-size: 12px; padding: 6px 14px;
+  }
+  .btn-preset:hover { background: #e2e8f0; }
+  .btn-preset.active { background: #3182ce; color: white; }
+  .presets-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .presets-row span { font-size: 12px; color: #a0aec0; align-self: center; margin-right: 4px; }
+  .ranges-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .range-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; color: white;
+  }
+  .compare-summary { overflow-x: auto; margin-top: 16px; }
+  .compare-summary table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  .compare-summary th, .compare-summary td {
+    padding: 8px 10px; text-align: right; border-bottom: 1px solid #edf2f7;
+  }
+  .compare-summary th {
+    text-align: left; color: #718096; font-weight: 600; font-size: 11px; text-transform: uppercase;
+  }
+  .compare-summary td:first-child { text-align: left; font-weight: 600; color: #2d3748; }
+  .compare-summary tr:hover td { background: #f7fafc; }
+  .metric-toggle {
+    display: flex; gap: 4px; margin-bottom: 14px;
+    background: #edf2f7; border-radius: 8px; padding: 3px; width: fit-content;
+  }
+  .metric-toggle button {
+    padding: 6px 16px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
+    cursor: pointer; background: transparent; color: #718096; transition: all 0.15s;
+  }
+  .metric-toggle button.active {
+    background: white; color: #2d3748; box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+  /* Supplier comparison */
+  .supplier-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-bottom: 18px;
+  }
+  .plan-card {
+    border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;
+    cursor: pointer; transition: all 0.15s; position: relative; background: #fff;
+  }
+  .plan-card:hover { border-color: #a0aec0; }
+  .plan-card.selected { border-color: #3182ce; background: #ebf8ff; }
+  .plan-card .supplier-name { font-size: 11px; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.5px; }
+  .plan-card .plan-name { font-size: 15px; font-weight: 700; color: #2d3748; margin: 2px 0; }
+  .plan-card .plan-discount { font-size: 22px; font-weight: 800; color: #38a169; }
+  .plan-card .plan-details { font-size: 11px; color: #718096; margin-top: 4px; }
+  .plan-card .smart-badge {
+    position: absolute; top: 8px; right: 8px; font-size: 9px;
+    background: #fefcbf; color: #975a16; padding: 2px 6px; border-radius: 4px; font-weight: 600;
+  }
+  .supplier-filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .supplier-filter-row button {
+    padding: 5px 14px; border: 1px solid #e2e8f0; border-radius: 20px;
+    font-size: 12px; font-weight: 600; cursor: pointer; background: #fff; color: #4a5568; transition: all 0.15s;
+  }
+  .supplier-filter-row button.active { background: #3182ce; color: #fff; border-color: #3182ce; }
+  .savings-summary-cards { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; margin-bottom: 8px; }
+  .savings-card {
+    flex: 1; min-width: 180px; max-width: 280px;
+    background: #f0fff4; border: 1px solid #c6f6d5; border-radius: 10px; padding: 14px; text-align: center;
+  }
+  .savings-card .sc-supplier { font-size: 11px; color: #a0aec0; text-transform: uppercase; }
+  .savings-card .sc-plan { font-size: 13px; font-weight: 700; color: #2d3748; }
+  .savings-card .sc-amount { font-size: 24px; font-weight: 800; color: #38a169; margin: 4px 0; }
+  .savings-card .sc-sub { font-size: 11px; color: #718096; }
+  /* Optimal switcher */
+  .opt-provider-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .opt-provider-row button {
+    padding: 8px 20px; border: 2px solid #e2e8f0; border-radius: 10px;
+    font-size: 13px; font-weight: 700; cursor: pointer; background: #fff; color: #4a5568; transition: all 0.15s;
+  }
+  .opt-provider-row button.active { border-color: #3182ce; background: #ebf8ff; color: #3182ce; }
+  .opt-provider-row button:hover { border-color: #a0aec0; }
+  .opt-hero { display: flex; gap: 20px; flex-wrap: wrap; margin: 18px 0 10px; align-items: center; }
+  .opt-hero-card {
+    background: linear-gradient(135deg, #ebf8ff 0%, #f0fff4 100%);
+    border: 1px solid #bee3f8; border-radius: 12px; padding: 18px 24px; text-align: center; min-width: 200px;
+  }
+  .opt-hero-card .opt-label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; }
+  .opt-hero-card .opt-val { font-size: 30px; font-weight: 800; color: #2b6cb0; margin: 4px 0; }
+  .opt-hero-card .opt-sub { font-size: 12px; color: #a0aec0; }
+  .opt-hero-card.green .opt-val { color: #38a169; }
+  .opt-month-strip { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; }
+  .opt-month-chip {
+    flex: 1; min-width: 80px; border-radius: 8px; padding: 8px 6px;
+    text-align: center; font-size: 11px; color: #fff; font-weight: 600;
+  }
+  .opt-month-chip .chip-month { opacity: 0.85; font-size: 10px; }
+  .opt-month-chip .chip-plan { font-size: 12px; margin: 2px 0; }
+  .opt-month-chip .chip-save { font-size: 13px; font-weight: 800; }
+  /* Upload screen */
+  .upload-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 80vh; text-align: center;
+  }
+  .upload-screen h1 { font-size: 36px; margin-bottom: 12px; }
+  .upload-screen .upload-sub { color: #718096; font-size: 16px; margin-bottom: 32px; max-width: 500px; }
+  .upload-zone {
+    border: 3px dashed #cbd5e0; border-radius: 16px; padding: 60px 80px;
+    cursor: pointer; transition: all 0.2s; background: white; position: relative;
+  }
+  .upload-zone:hover, .upload-zone.dragover { border-color: #3182ce; background: #ebf8ff; }
+  .upload-zone .upload-icon { font-size: 48px; margin-bottom: 12px; color: #a0aec0; }
+  .upload-zone .upload-text { font-size: 16px; color: #4a5568; font-weight: 600; }
+  .upload-zone .upload-hint { font-size: 12px; color: #a0aec0; margin-top: 6px; }
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+  .upload-format {
+    margin-top: 24px; font-size: 12px; color: #a0aec0; max-width: 400px;
+    background: #f7fafc; padding: 14px 20px; border-radius: 10px; text-align: left;
+  }
+  .upload-format strong { color: #4a5568; }
+  .upload-error {
+    margin-top: 16px; padding: 12px 20px; background: #fff5f5; border: 1px solid #fc8181;
+    border-radius: 8px; color: #c53030; font-size: 13px; display: none;
+  }
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    body { padding: 12px; }
+    .upload-zone { padding: 40px 30px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Upload Screen -->
+<div id="uploadScreen" class="upload-screen">
+  <h1>Electricity Consumption Dashboard</h1>
+  <p class="upload-sub">Upload your IEC (Israel Electric Corporation) meter reading CSV to analyze consumption patterns and compare supplier savings.</p>
+  <div class="upload-zone" id="uploadZone">
+    <div class="upload-icon">&#9889;</div>
+    <div class="upload-text">Drop your CSV file here or click to browse</div>
+    <div class="upload-hint">Accepts IEC 15-min interval meter export files</div>
+    <input type="file" id="csvInput" accept=".csv">
+  </div>
+  <div class="upload-format">
+    <strong>Expected CSV format:</strong><br>
+    IEC meter export with columns: meter code, type, date (DD/MM/YYYY), time (HH:MM), consumption (kWh), feed-in (kWh).<br>
+    Data rows typically start after a header section.
+  </div>
+  <div class="upload-error" id="uploadError"></div>
+</div>
+
+<!-- Dashboard (hidden until CSV loaded) -->
+<div id="dashboard" style="display:none">
+  <h1>Electricity Consumption Dashboard</h1>
+  <p class="subtitle" id="subtitle"></p>
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="grid">
+    <!-- Monthly Total -->
+    <div class="chart-card">
+      <h2>Monthly Total Consumption (kWh)</h2>
+      <div class="chart-container"><canvas id="monthlyChart"></canvas></div>
+    </div>
+
+    <!-- Hourly Average -->
+    <div class="chart-card">
+      <h2>Average Consumption by Hour of Day (kWh per 15-min)</h2>
+      <div class="chart-container"><canvas id="hourlyChart"></canvas></div>
+    </div>
+
+    <!-- Daily Time Series -->
+    <div class="chart-card full-width">
+      <h2>Daily Consumption Over Time (kWh)</h2>
+      <div class="chart-container tall"><canvas id="dailyChart"></canvas></div>
+    </div>
+
+    <!-- Time Range Comparison -->
+    <div class="chart-card full-width compare-section">
+      <h2>Compare Consumption by Custom Time Ranges</h2>
+      <p style="font-size:13px;color:#718096;margin-bottom:14px;">
+        Define time ranges to compare average daily consumption across months. Supports overnight ranges (e.g. 23:00 to 07:00).
+      </p>
+      <div class="presets-row">
+        <span>Quick presets:</span>
+        <button class="btn btn-preset" onclick="addPreset('Night', 23, 7)">Night (23:00-07:00)</button>
+        <button class="btn btn-preset" onclick="addPreset('Morning', 7, 12)">Morning (07:00-12:00)</button>
+        <button class="btn btn-preset" onclick="addPreset('Afternoon', 12, 17)">Afternoon (12:00-17:00)</button>
+        <button class="btn btn-preset" onclick="addPreset('Evening', 17, 23)">Evening (17:00-23:00)</button>
+        <button class="btn btn-preset" onclick="addPreset('Peak', 20, 23)">Peak (20:00-23:00)</button>
+        <button class="btn btn-preset" onclick="addPreset('Off-Peak', 1, 6)">Off-Peak (01:00-06:00)</button>
+      </div>
+      <div class="compare-controls">
+        <div class="control-group">
+          <label>Label</label>
+          <input type="text" id="rangeName" placeholder="e.g. Night" value="">
+        </div>
+        <div class="control-group">
+          <label>From (hour)</label>
+          <select id="rangeFrom"></select>
+        </div>
+        <div class="control-group">
+          <label>To (hour)</label>
+          <select id="rangeTo"></select>
+        </div>
+        <button class="btn btn-primary" onclick="addCustomRange()" style="align-self:flex-end;">Add Range</button>
+        <button class="btn btn-preset" onclick="clearAllRanges()" style="align-self:flex-end;margin-left:4px;">Clear All</button>
+      </div>
+      <div class="ranges-list" id="rangesList"></div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+        <div>
+          <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:5px;">Days filter</div>
+          <div class="metric-toggle" id="dayFilterToggle">
+            <button class="active" onclick="setDayFilter('all', this)">All Days</button>
+            <button onclick="setDayFilter('weekday', this)">Sun-Thu</button>
+            <button onclick="setDayFilter('weekend', this)">Fri-Sat</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:5px;">Metric</div>
+          <div class="metric-toggle" id="metricToggle">
+            <button class="active" onclick="setMetric('avgDaily', this)">Avg Daily kWh</button>
+            <button onclick="setMetric('totalMonthly', this)">Total Monthly kWh</button>
+            <button onclick="setMetric('pctOfTotal', this)">% of Monthly Total</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-container tall"><canvas id="compareChart"></canvas></div>
+      <div class="compare-summary" id="compareSummary"></div>
+    </div>
+
+    <!-- Supplier Cost Comparison -->
+    <div class="chart-card full-width">
+      <h2>Supplier Price Comparison - Simulated Savings</h2>
+      <p style="font-size:13px;color:#718096;margin-bottom:6px;">
+        Based on your actual consumption data and the current IEC tariff of <strong>64.02 ag/kWh</strong> (Jan 2026).
+        Select plans to compare how much you would have saved each month.
+      </p>
+      <p style="font-size:11px;color:#a0aec0;margin-bottom:14px;">
+        Plans marked with a yellow badge require a smart meter. Flat discount plans work with any meter.
+        Discount applies only during the plan's specified hours/days.
+      </p>
+      <div class="supplier-filter-row" id="supplierFilterRow"></div>
+      <div class="supplier-grid" id="planGrid"></div>
+      <div class="savings-summary-cards" id="savingsSummary"></div>
+      <div class="chart-container tall"><canvas id="supplierChart"></canvas></div>
+      <div class="compare-summary" id="supplierTable"></div>
+    </div>
+
+    <!-- Optimal Plan Switcher -->
+    <div class="chart-card full-width">
+      <h2>Optimal Monthly Plan Switcher</h2>
+      <p style="font-size:13px;color:#718096;margin-bottom:6px;">
+        Since you can switch plans monthly within the same provider, this shows which plan saves you the most <strong>each month</strong>.
+      </p>
+      <p style="font-size:11px;color:#a0aec0;margin-bottom:14px;">
+        Select a provider to see the optimal plan for each month and the total yearly savings from smart switching.
+      </p>
+      <div class="opt-provider-row" id="optProviderRow"></div>
+      <div class="opt-hero" id="optHero"></div>
+      <div class="opt-month-strip" id="optMonthStrip"></div>
+      <div class="chart-container tall"><canvas id="optChart"></canvas></div>
+      <div class="compare-summary" id="optTable"></div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="chart-card full-width">
+      <h2>Consumption Heatmap: Hour of Day vs Month (Avg kWh per 15-min)</h2>
+      <div class="heatmap-container" id="heatmapContainer"></div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:24px;">
+    <button class="btn btn-preset" onclick="resetDashboard()" style="padding:10px 24px;font-size:14px;">Load Different CSV</button>
+  </div>
+</div>
+
+<script>
+// ===== CSV PARSER =====
+function parseCSV(text) {
+  // Remove BOM if present
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.split(/\r?\n/);
+  const readings = [];
+  let meterCode = '';
+  const dateRegex = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/;
+
+  for (let i = 0; i < lines.length; i++) {
+    // Split by comma and strip surrounding quotes from each field
+    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+    if (cols.length < 5) continue;
+    const dateStr = cols[2] || '';
+    if (!dateRegex.test(dateStr)) continue;
+    const timeStr = cols[3] || '';
+    const kwh = parseFloat(cols[4]);
+    if (isNaN(kwh)) continue;
+
+    const [dd, mm, yyyy] = dateStr.split(/[\/\-]/).map(Number);
+    const [hh, mi] = timeStr.split(':').map(Number);
+    // Reading time is end of 15-min interval. Assign to hour of (time - 15min).
+    let hour = hh;
+    let assignMin = mi - 15;
+    if (assignMin < 0) { hour = (hh - 1 + 24) % 24; assignMin = 45; }
+
+    const dateObj = new Date(yyyy, mm - 1, dd);
+    const dayOfWeek = dateObj.getDay(); // 0=Sun, 5=Fri, 6=Sat
+    const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+    const monthKey = `${yyyy}-${String(mm).padStart(2, '0')}`;
+    const dayKey = `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+
+    if (!meterCode && cols[0]) meterCode = cols[0];
+
+    readings.push({ monthKey, dayKey, hour, kwh, isWeekend, dateObj });
+  }
+  return { readings, meterCode };
+}
+
+// ===== DATA AGGREGATION =====
+function aggregateData(readings) {
+  // Collect unique months and days
+  const monthSet = new Set();
+  const daySet = new Set();
+  const dayMeta = {}; // dayKey -> { isWeekend }
+
+  readings.forEach(r => {
+    monthSet.add(r.monthKey);
+    daySet.add(r.dayKey);
+    if (!dayMeta[r.dayKey]) dayMeta[r.dayKey] = { isWeekend: r.isWeekend, monthKey: r.monthKey };
+  });
+
+  const sortedMonthKeys = [...monthSet].sort();
+  const sortedDayKeys = [...daySet].sort();
+  const monthIndex = {}; // monthKey -> index
+  sortedMonthKeys.forEach((mk, i) => { monthIndex[mk] = i; });
+
+  const numMonths = sortedMonthKeys.length;
+
+  // Month labels: "Feb 25", "Mar 25", etc.
+  const monthLabelsShort = sortedMonthKeys.map(mk => {
+    const [y, m] = mk.split('-');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[parseInt(m) - 1] + ' ' + y.slice(2);
+  });
+
+  // Day counts per month
+  const daysCountAll = {}, daysCountWD = {}, daysCountWE = {};
+  sortedMonthKeys.forEach(mk => { daysCountAll[mk] = 0; daysCountWD[mk] = 0; daysCountWE[mk] = 0; });
+  sortedDayKeys.forEach(dk => {
+    const meta = dayMeta[dk];
+    daysCountAll[meta.monthKey]++;
+    if (meta.isWeekend) daysCountWE[meta.monthKey]++;
+    else daysCountWD[meta.monthKey]++;
+  });
+
+  // Daily totals
+  const dailyTotals = {};
+  readings.forEach(r => {
+    dailyTotals[r.dayKey] = (dailyTotals[r.dayKey] || 0) + r.kwh;
+  });
+  const dailyKeys = sortedDayKeys;
+  const dailyVals = dailyKeys.map(dk => Math.round((dailyTotals[dk] || 0) * 100) / 100);
+
+  // Monthly totals (all / weekday / weekend)
+  const monthlyAllTotals = {}, monthlyWDTotals = {}, monthlyWETotals = {};
+  sortedMonthKeys.forEach(mk => { monthlyAllTotals[mk] = 0; monthlyWDTotals[mk] = 0; monthlyWETotals[mk] = 0; });
+  readings.forEach(r => {
+    monthlyAllTotals[r.monthKey] += r.kwh;
+    if (r.isWeekend) monthlyWETotals[r.monthKey] += r.kwh;
+    else monthlyWDTotals[r.monthKey] += r.kwh;
+  });
+  // Round
+  sortedMonthKeys.forEach(mk => {
+    monthlyAllTotals[mk] = Math.round(monthlyAllTotals[mk] * 100) / 100;
+    monthlyWDTotals[mk] = Math.round(monthlyWDTotals[mk] * 100) / 100;
+    monthlyWETotals[mk] = Math.round(monthlyWETotals[mk] * 100) / 100;
+  });
+
+  // Hourly average across all data (avg kWh per 15-min interval per hour)
+  const hourSums = new Array(24).fill(0);
+  const hourCounts = new Array(24).fill(0);
+  readings.forEach(r => { hourSums[r.hour] += r.kwh; hourCounts[r.hour]++; });
+  const hourlyAvg = {};
+  for (let h = 0; h < 24; h++) {
+    hourlyAvg[h] = hourCounts[h] > 0 ? Math.round(hourSums[h] / hourCounts[h] * 10000) / 10000 : 0;
+  }
+
+  // Heatmap: heatmap[monthIndex][hour] = avg kWh per 15-min reading
+  // For all, weekday, weekend
+  const hmSumsAll = [], hmCountsAll = [];
+  const hmSumsWD = [], hmCountsWD = [];
+  const hmSumsWE = [], hmCountsWE = [];
+  for (let mi = 0; mi < numMonths; mi++) {
+    hmSumsAll.push(new Array(24).fill(0)); hmCountsAll.push(new Array(24).fill(0));
+    hmSumsWD.push(new Array(24).fill(0)); hmCountsWD.push(new Array(24).fill(0));
+    hmSumsWE.push(new Array(24).fill(0)); hmCountsWE.push(new Array(24).fill(0));
+  }
+  readings.forEach(r => {
+    const mi = monthIndex[r.monthKey];
+    hmSumsAll[mi][r.hour] += r.kwh; hmCountsAll[mi][r.hour]++;
+    if (r.isWeekend) { hmSumsWE[mi][r.hour] += r.kwh; hmCountsWE[mi][r.hour]++; }
+    else { hmSumsWD[mi][r.hour] += r.kwh; hmCountsWD[mi][r.hour]++; }
+  });
+
+  const heatmapRaw = [], heatmapWD = [], heatmapWE = [];
+  for (let mi = 0; mi < numMonths; mi++) {
+    heatmapRaw.push([]); heatmapWD.push([]); heatmapWE.push([]);
+    for (let h = 0; h < 24; h++) {
+      heatmapRaw[mi].push(hmCountsAll[mi][h] > 0 ? Math.round(hmSumsAll[mi][h] / hmCountsAll[mi][h] * 10000) / 10000 : 0);
+      heatmapWD[mi].push(hmCountsWD[mi][h] > 0 ? Math.round(hmSumsWD[mi][h] / hmCountsWD[mi][h] * 10000) / 10000 : 0);
+      heatmapWE[mi].push(hmCountsWE[mi][h] > 0 ? Math.round(hmSumsWE[mi][h] / hmCountsWE[mi][h] * 10000) / 10000 : 0);
+    }
+  }
+
+  // Summary stats
+  const totalKwh = Object.values(monthlyAllTotals).reduce((a, b) => a + b, 0);
+  const peakMonthKey = sortedMonthKeys.reduce((best, mk) => monthlyAllTotals[mk] > monthlyAllTotals[best] ? mk : best, sortedMonthKeys[0]);
+  const peakMonthLabel = monthLabelsShort[monthIndex[peakMonthKey]];
+  const peakMonthVal = Math.round(monthlyAllTotals[peakMonthKey]);
+  const peakHour = Object.entries(hourlyAvg).reduce((best, [h, v]) => v > best[1] ? [h, v] : best, [0, 0])[0];
+  const totalDays = sortedDayKeys.length;
+  const avgDailyKwh = totalDays > 0 ? Math.round(totalKwh / totalDays * 10) / 10 : 0;
+
+  // Date range
+  const firstDay = sortedDayKeys[0];
+  const lastDay = sortedDayKeys[sortedDayKeys.length - 1];
+
+  return {
+    sortedMonthKeys, monthLabelsShort, monthIndex,
+    daysCountAll, daysCountWD, daysCountWE,
+    dailyKeys, dailyVals,
+    monthlyAllTotals, monthlyWDTotals, monthlyWETotals,
+    hourlyAvg, heatmapRaw, heatmapWD, heatmapWE,
+    totalKwh, peakMonthLabel, peakMonthVal, peakHour, avgDailyKwh,
+    firstDay, lastDay
+  };
+}
+
+// ===== GLOBAL STATE =====
+let D = null; // aggregated data
+let activeRanges = [];
+let currentMetric = 'avgDaily';
+let currentDayFilter = 'all';
+let compareChart = null;
+let monthlyChartInst = null, hourlyChartInst = null, dailyChartInst = null;
+let supplierChart = null;
+let optChart = null;
+let selectedPlans = new Set(['pazgas_flat', 'cellcom_night', 'electra_night']);
+let supplierFilter = 'all';
+let optProvider = 'Cellcom';
+
+const TARIFF = 0.6402;
+const PLANS = [
+  {id:'cellcom_flat',    sup:'Cellcom',   name:'Fixed 24/7',     disc:null,  hours:null,   days:'all',     note:'Tiered by bill', sm:false, tiers:[{max:149,d:0.10},{max:199,d:0.08},{max:299,d:0.06},{max:Infinity,d:0.05}]},
+  {id:'cellcom_night',   sup:'Cellcom',   name:'Night',          disc:0.20,  hours:[23,7], days:'weekday', note:'Sun-Thu',          sm:true},
+  {id:'cellcom_wfh',     sup:'Cellcom',   name:'Work from Home', disc:0.15,  hours:[7,17], days:'weekday', note:'Sun-Thu',          sm:true},
+  {id:'cellcom_family',  sup:'Cellcom',   name:'Family',         disc:0.18,  hours:[14,20],days:'weekday', note:'Sun-Thu',          sm:true},
+  {id:'electra_flat',    sup:'Electra',   name:'Power 24/7',     disc:0.065, hours:null,   days:'all',     note:'',                sm:false},
+  {id:'electra_night',   sup:'Electra',   name:'Night Plus',     disc:0.21,  hours:[23,7], days:'weekday', note:'Best night deal',  sm:true},
+  {id:'electra_day',     sup:'Electra',   name:'Day (Hi-Tech)',  disc:0.16,  hours:[7,17], days:'weekday', note:'Sun-Thu',          sm:true},
+  {id:'pazgas_flat',     sup:'Pazgas',    name:'Fixed 24/7',     disc:0.06,  hours:null,   days:'all',     note:'Reduced from 7%',  sm:false},
+  {id:'pazgas_weekend',  sup:'Pazgas',    name:'Weekend',        disc:0.10,  hours:null,   days:'weekend', note:'Fri-Sat',          sm:true},
+  {id:'pazgas_night',    sup:'Pazgas',    name:'Night',          disc:0.20,  hours:[23,7], days:'weekday', note:'Sun-Thu',          sm:true},
+  {id:'pazgas_day',      sup:'Pazgas',    name:'Day',            disc:0.15,  hours:[8,16], days:'weekday', note:'Sun-Thu 08-16',    sm:true},
+  {id:'bezeq_flat',      sup:'Bezeq',     name:'Fixed 24/7',     disc:0.06,  hours:null,   days:'all',     note:'',                sm:false},
+  {id:'bezeq_night',     sup:'Bezeq',     name:'Night',          disc:0.20,  hours:[23,7], days:'weekday', note:'Sun-Thu',          sm:true},
+  {id:'bezeq_day',       sup:'Bezeq',     name:'Day',            disc:0.15,  hours:[7,17], days:'weekday', note:'Sun-Thu',          sm:true},
+  {id:'partner_flat',    sup:'Partner',   name:'Fixed 24/7',     disc:0.05,  hours:null,   days:'all',     note:'5% yr1, 7% yr3',  sm:false},
+  {id:'partner_night',   sup:'Partner',   name:'Night',          disc:0.20,  hours:[23,7], days:'weekday', note:'Sun-Thu',          sm:true},
+  {id:'partner_wfh',     sup:'Partner',   name:'Work from Home', disc:0.15,  hours:[8,17], days:'weekday', note:'Sun-Thu 08-17',    sm:true},
+  {id:'amisragaz_flat',  sup:'Amisragaz', name:'Fixed 24/7',     disc:0.065, hours:null,   days:'all',     note:'7% for gas cust.', sm:false},
+];
+const SUP_COLORS = {
+  'Cellcom':  {bg:'rgba(49,130,206,0.7)',  border:'#3182ce'},
+  'Electra':  {bg:'rgba(221,107,32,0.7)',  border:'#dd6b20'},
+  'Pazgas':   {bg:'rgba(56,178,172,0.7)',  border:'#38b2ac'},
+  'Bezeq':    {bg:'rgba(159,122,234,0.7)', border:'#805ad5'},
+  'Partner':  {bg:'rgba(237,100,166,0.7)', border:'#d53f8c'},
+  'Amisragaz':{bg:'rgba(72,187,120,0.7)',  border:'#38a169'},
+};
+const RANGE_COLORS = [
+  {bg:'rgba(49,130,206,0.75)',border:'#3182ce',tag:'#3182ce'},
+  {bg:'rgba(221,107,32,0.75)',border:'#dd6b20',tag:'#dd6b20'},
+  {bg:'rgba(56,178,172,0.75)',border:'#38b2ac',tag:'#38b2ac'},
+  {bg:'rgba(159,122,234,0.75)',border:'#805ad5',tag:'#805ad5'},
+  {bg:'rgba(237,100,166,0.75)',border:'#d53f8c',tag:'#d53f8c'},
+  {bg:'rgba(72,187,120,0.75)',border:'#38a169',tag:'#38a169'},
+];
+const PLAN_COLORS = ['#3182ce','#dd6b20','#38b2ac','#805ad5','#d53f8c','#38a169','#e53e3e','#d69e2e'];
+const allSuppliers = [...new Set(PLANS.map(p => p.sup))];
+
+// ===== HELPER FUNCTIONS =====
+function getHoursInRange(from, to) {
+  const hours = [];
+  if (from < to) { for (let h = from; h < to; h++) hours.push(h); }
+  else { for (let h = from; h < 24; h++) hours.push(h); for (let h = 0; h < to; h++) hours.push(h); }
+  return hours;
+}
+function getActiveHeatmap() {
+  if (currentDayFilter === 'weekday') return D.heatmapWD;
+  if (currentDayFilter === 'weekend') return D.heatmapWE;
+  return D.heatmapRaw;
+}
+function getActiveDaysCount() {
+  if (currentDayFilter === 'weekday') return D.daysCountWD;
+  if (currentDayFilter === 'weekend') return D.daysCountWE;
+  return D.daysCountAll;
+}
+function getActiveMonthlyTotals() {
+  if (currentDayFilter === 'weekday') return D.monthlyWDTotals;
+  if (currentDayFilter === 'weekend') return D.monthlyWETotals;
+  return D.monthlyAllTotals;
+}
+function formatRangeLabel(from, to) {
+  return `${from.toString().padStart(2,'0')}:00 - ${to.toString().padStart(2,'0')}:00`;
+}
+
+// ===== CALC FUNCTIONS =====
+function calcRangeData(range) {
+  const hours = getHoursInRange(range.from, range.to);
+  const hm = getActiveHeatmap();
+  const dc = getActiveDaysCount();
+  const mt = getActiveMonthlyTotals();
+  return D.sortedMonthKeys.map((mk, mi) => {
+    const dailyKwh = hours.reduce((sum, h) => sum + hm[mi][h] * 4, 0);
+    const numDays = dc[mk] || 1;
+    const monthTotal = mt[mk] || 1;
+    return {
+      month: mk,
+      avgDaily: Math.round(dailyKwh * 100) / 100,
+      totalMonthly: Math.round(dailyKwh * numDays * 100) / 100,
+      pctOfTotal: monthTotal > 0 ? Math.round((dailyKwh * numDays) / monthTotal * 10000) / 100 : 0
+    };
+  });
+}
+
+function calcPlanSavings(plan) {
+  return D.sortedMonthKeys.map((mk, mi) => {
+    let discKwh;
+    if (plan.hours === null && plan.days === 'all') {
+      discKwh = D.monthlyAllTotals[mk];
+    } else if (plan.hours === null && plan.days === 'weekend') {
+      discKwh = D.monthlyWETotals[mk];
+    } else {
+      const hrs = getHoursInRange(plan.hours[0], plan.hours[1]);
+      if (plan.days === 'all') {
+        discKwh = hrs.reduce((s, h) => s + D.heatmapRaw[mi][h] * 4, 0) * D.daysCountAll[mk];
+      } else if (plan.days === 'weekday') {
+        discKwh = hrs.reduce((s, h) => s + D.heatmapWD[mi][h] * 4, 0) * D.daysCountWD[mk];
+      } else {
+        discKwh = hrs.reduce((s, h) => s + D.heatmapWE[mi][h] * 4, 0) * D.daysCountWE[mk];
+      }
+    }
+    const totalKwh = D.monthlyAllTotals[mk];
+    const iecCost = totalKwh * TARIFF;
+    let disc = plan.disc;
+    if (plan.tiers) {
+      disc = plan.tiers[plan.tiers.length - 1].d;
+      for (const t of plan.tiers) { if (iecCost <= t.max) { disc = t.d; break; } }
+    }
+    const savings = discKwh * TARIFF * disc;
+    return {
+      month: mk,
+      iecCost: Math.round(iecCost * 100) / 100,
+      savings: Math.round(savings * 100) / 100,
+      supplierCost: Math.round((iecCost - savings) * 100) / 100,
+      savingsPct: iecCost > 0 ? Math.round(savings / iecCost * 10000) / 100 : 0
+    };
+  });
+}
+
+// ===== RENDER FUNCTIONS =====
+
+// -- Time Range Comparison --
+function renderRangesTags() {
+  document.getElementById('rangesList').innerHTML = activeRanges.map((r, i) => `
+    <span class="range-tag" style="background:${RANGE_COLORS[i % RANGE_COLORS.length].tag}">
+      ${r.name} (${formatRangeLabel(r.from, r.to)})
+      <button class="btn btn-danger" onclick="removeRange(${i})" style="margin-left:4px;">x</button>
+    </span>`).join('');
+}
+
+function renderCompareChart() {
+  if (compareChart) compareChart.destroy();
+  if (activeRanges.length === 0) {
+    document.getElementById('compareSummary').innerHTML = '<p style="color:#a0aec0;text-align:center;padding:20px;">Add time ranges above to see the comparison.</p>';
+    compareChart = new Chart(document.getElementById('compareChart'), {
+      type:'bar', data:{labels:D.monthLabelsShort, datasets:[]}, options:{responsive:true, maintainAspectRatio:false}
+    });
+    return;
+  }
+  const metricLabels = {avgDaily:'Avg Daily kWh', totalMonthly:'Total Monthly kWh', pctOfTotal:'% of Monthly Total'};
+  const dayFilterLabels = {all:'All Days', weekday:'Sun-Thu Only', weekend:'Fri-Sat Only'};
+  const datasets = activeRanges.map((range, i) => {
+    const data = calcRangeData(range);
+    const color = RANGE_COLORS[i % RANGE_COLORS.length];
+    return {
+      label:`${range.name} (${formatRangeLabel(range.from, range.to)})`,
+      data:data.map(d=>d[currentMetric]), backgroundColor:color.bg,
+      borderColor:color.border, borderWidth:2, borderRadius:4, borderSkipped:false
+    };
+  });
+  compareChart = new Chart(document.getElementById('compareChart'), {
+    type:'bar', data:{labels:D.monthLabelsShort, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true, position:'top', labels:{font:{size:12}, usePointStyle:true, padding:16}},
+        tooltip:{callbacks:{label:ctx=>{
+          const v=ctx.parsed.y;
+          return currentMetric==='pctOfTotal'?`${ctx.dataset.label}: ${v.toFixed(1)}%`:`${ctx.dataset.label}: ${v.toFixed(1)} kWh`;
+        }}}
+      },
+      scales:{
+        y:{beginAtZero:true, grid:{color:'#edf2f7'},
+          title:{display:true, text:`${metricLabels[currentMetric]} (${dayFilterLabels[currentDayFilter]})`, font:{size:12}},
+          ticks:{callback:v=>currentMetric==='pctOfTotal'?v+'%':v.toLocaleString()}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+  // Summary table
+  let thtml='<table><thead><tr><th>Month</th>';
+  activeRanges.forEach(r=>{thtml+=`<th>${r.name} (${formatRangeLabel(r.from,r.to)})</th>`;});
+  thtml+='</tr></thead><tbody>';
+  D.monthLabelsShort.forEach((ml,mi)=>{
+    thtml+=`<tr><td>${ml}</td>`;
+    activeRanges.forEach(r=>{
+      const data=calcRangeData(r); const val=data[mi][currentMetric];
+      thtml+=currentMetric==='pctOfTotal'?`<td>${val.toFixed(1)}%</td>`:`<td>${val.toFixed(1)} kWh</td>`;
+    });
+    thtml+='</tr>';
+  });
+  thtml+='<tr style="border-top:2px solid #cbd5e0;font-weight:700"><td>Yearly Avg</td>';
+  activeRanges.forEach(r=>{
+    const data=calcRangeData(r); const vals=data.map(d=>d[currentMetric]);
+    const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+    thtml+=currentMetric==='pctOfTotal'?`<td>${avg.toFixed(1)}%</td>`:`<td>${avg.toFixed(1)} kWh</td>`;
+  });
+  thtml+='</tr></tbody></table>';
+  document.getElementById('compareSummary').innerHTML=thtml;
+}
+
+// -- Supplier Comparison --
+function renderPlanGrid() {
+  const plans = supplierFilter==='all'?PLANS:PLANS.filter(p=>p.sup===supplierFilter);
+  document.getElementById('planGrid').innerHTML = plans.map(p=>{
+    const sel=selectedPlans.has(p.id)?'selected':'';
+    const hrs=p.hours?`${p.hours[0].toString().padStart(2,'0')}:00-${p.hours[1].toString().padStart(2,'0')}:00`:'24/7';
+    const dayLabel=p.days==='weekday'?'Sun-Thu':p.days==='weekend'?'Fri-Sat':'All week';
+    return `<div class="plan-card ${sel}" onclick="togglePlan('${p.id}')">
+      ${p.sm?'<span class="smart-badge">Smart Meter</span>':''}
+      <div class="supplier-name">${p.sup}</div>
+      <div class="plan-name">${p.name}</div>
+      <div class="plan-discount">${p.tiers?p.tiers.map(t=>(t.d*100).toFixed(0)+'%').join('-'):(p.disc*100).toFixed(1)+'%'} off</div>
+      <div class="plan-details">${hrs} | ${dayLabel}${p.note?' | '+p.note:''}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSupplierChart() {
+  if (supplierChart) supplierChart.destroy();
+  const selArr = PLANS.filter(p=>selectedPlans.has(p.id));
+  if (selArr.length===0) {
+    document.getElementById('savingsSummary').innerHTML='';
+    document.getElementById('supplierTable').innerHTML='<p style="color:#a0aec0;text-align:center;padding:20px;">Select plans above to see savings comparison.</p>';
+    supplierChart=new Chart(document.getElementById('supplierChart'),{type:'bar',data:{labels:D.monthLabelsShort,datasets:[]},options:{responsive:true,maintainAspectRatio:false}});
+    return;
+  }
+  const datasets=selArr.map(plan=>{
+    const data=calcPlanSavings(plan);
+    const color=SUP_COLORS[plan.sup]||{bg:'rgba(160,174,192,0.7)',border:'#a0aec0'};
+    return {label:`${plan.sup} - ${plan.name}`, data:data.map(d=>d.savings),
+      backgroundColor:color.bg, borderColor:color.border, borderWidth:2, borderRadius:4, borderSkipped:false};
+  });
+  supplierChart=new Chart(document.getElementById('supplierChart'),{
+    type:'bar', data:{labels:D.monthLabelsShort, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true, position:'top', labels:{font:{size:12}, usePointStyle:true, padding:16}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(0)} ILS saved`}}
+      },
+      scales:{
+        y:{beginAtZero:true, grid:{color:'#edf2f7'}, title:{display:true,text:'Monthly Savings (ILS)',font:{size:12}}, ticks:{callback:v=>v+' ILS'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+  // Summary cards
+  let cardsHtml='';
+  selArr.forEach(plan=>{
+    const data=calcPlanSavings(plan);
+    const yearSavings=data.reduce((s,d)=>s+d.savings,0);
+    const yearIec=data.reduce((s,d)=>s+d.iecCost,0);
+    const avgPct=yearIec>0?(yearSavings/yearIec*100).toFixed(1):0;
+    const color=SUP_COLORS[plan.sup]||{border:'#a0aec0'};
+    cardsHtml+=`<div class="savings-card" style="border-color:${color.border}20;background:${color.border}08">
+      <div class="sc-supplier">${plan.sup}</div>
+      <div class="sc-plan">${plan.name} (${plan.tiers?'5-10%':(plan.disc*100).toFixed(1)+'%'})</div>
+      <div class="sc-amount" style="color:${color.border}">${yearSavings.toFixed(0)} ILS/yr</div>
+      <div class="sc-sub">${(yearSavings/12).toFixed(0)} ILS/mo avg | ${avgPct}% effective</div>
+    </div>`;
+  });
+  document.getElementById('savingsSummary').innerHTML=cardsHtml;
+  // Detail table
+  let thtml='<table><thead><tr><th>Month</th><th>IEC Cost</th>';
+  selArr.forEach(p=>{thtml+=`<th>${p.sup} ${p.name}</th>`;});
+  thtml+='</tr></thead><tbody>';
+  D.monthLabelsShort.forEach((ml,mi)=>{
+    const iecCost=D.monthlyAllTotals[D.sortedMonthKeys[mi]]*TARIFF;
+    thtml+=`<tr><td>${ml}</td><td>${iecCost.toFixed(0)} ILS</td>`;
+    selArr.forEach(p=>{
+      const d=calcPlanSavings(p)[mi];
+      thtml+=`<td style="color:#38a169;font-weight:600">-${d.savings.toFixed(0)} ILS (${d.savingsPct.toFixed(1)}%)</td>`;
+    });
+    thtml+='</tr>';
+  });
+  const yearIec=D.sortedMonthKeys.reduce((s,mk)=>s+D.monthlyAllTotals[mk]*TARIFF,0);
+  thtml+=`<tr style="border-top:2px solid #cbd5e0;font-weight:700"><td>Year Total</td><td>${yearIec.toFixed(0)} ILS</td>`;
+  selArr.forEach(p=>{
+    const data=calcPlanSavings(p); const ys=data.reduce((s,d)=>s+d.savings,0);
+    const yp=yearIec>0?(ys/yearIec*100).toFixed(1):0;
+    thtml+=`<td style="color:#38a169;font-weight:700">-${ys.toFixed(0)} ILS (${yp}%)</td>`;
+  });
+  thtml+='</tr></tbody></table>';
+  document.getElementById('supplierTable').innerHTML=thtml;
+}
+
+// -- Optimal Plan Switcher --
+function renderOptimal() {
+  const supPlans=PLANS.filter(p=>p.sup===optProvider);
+  if (supPlans.length===0) return;
+  const monthResults=D.sortedMonthKeys.map((mk,mi)=>{
+    let bestPlan=null, bestSavings=-1;
+    const planSavings=supPlans.map(plan=>{
+      const data=calcPlanSavings(plan);
+      return {plan, savings:data[mi].savings, iecCost:data[mi].iecCost, savingsPct:data[mi].savingsPct};
+    });
+    planSavings.forEach(ps=>{ if(ps.savings>bestSavings){bestSavings=ps.savings;bestPlan=ps;} });
+    return {month:mk, monthLabel:D.monthLabelsShort[mi], best:bestPlan, allPlans:planSavings};
+  });
+  let bestSinglePlan=null, bestSingleTotal=0;
+  supPlans.forEach(plan=>{
+    const data=calcPlanSavings(plan); const total=data.reduce((s,d)=>s+d.savings,0);
+    if(total>bestSingleTotal){bestSingleTotal=total;bestSinglePlan=plan;}
+  });
+  const optimalTotal=monthResults.reduce((s,r)=>s+r.best.savings,0);
+  const yearIec=monthResults.reduce((s,r)=>s+r.best.iecCost,0);
+  const extraSavings=optimalTotal-bestSingleTotal;
+  document.getElementById('optHero').innerHTML=`
+    <div class="opt-hero-card green">
+      <div class="opt-label">Optimal Switching Savings</div>
+      <div class="opt-val">${optimalTotal.toFixed(0)} ILS/yr</div>
+      <div class="opt-sub">${(optimalTotal/12).toFixed(0)} ILS/mo avg | ${yearIec>0?(optimalTotal/yearIec*100).toFixed(1):0}% effective</div>
+    </div>
+    <div class="opt-hero-card">
+      <div class="opt-label">Best Single Plan</div>
+      <div class="opt-val">${bestSingleTotal.toFixed(0)} ILS/yr</div>
+      <div class="opt-sub">${bestSinglePlan?bestSinglePlan.name:'-'}</div>
+    </div>
+    <div class="opt-hero-card green">
+      <div class="opt-label">Extra from Switching</div>
+      <div class="opt-val">+${extraSavings.toFixed(0)} ILS/yr</div>
+      <div class="opt-sub">by picking the best plan each month</div>
+    </div>`;
+  const planNames=[...new Set(supPlans.map(p=>p.name))];
+  const planColorMap={}; planNames.forEach((n,i)=>{planColorMap[n]=PLAN_COLORS[i%PLAN_COLORS.length];});
+  document.getElementById('optMonthStrip').innerHTML=monthResults.map(r=>{
+    const bg=planColorMap[r.best.plan.name]||'#718096';
+    return `<div class="opt-month-chip" style="background:${bg}">
+      <div class="chip-month">${r.monthLabel}</div>
+      <div class="chip-plan">${r.best.plan.name}</div>
+      <div class="chip-save">${r.best.savings.toFixed(0)} ILS</div>
+    </div>`;
+  }).join('');
+  if(optChart) optChart.destroy();
+  const datasets=supPlans.map(plan=>{
+    const data=calcPlanSavings(plan); const color=planColorMap[plan.name]||'#718096';
+    return {label:plan.name, data:data.map(d=>d.savings), backgroundColor:color+'55',
+      borderColor:color, borderWidth:2, borderRadius:4, borderSkipped:false};
+  });
+  datasets.push({
+    type:'line', label:'Optimal (best each month)',
+    data:monthResults.map(r=>r.best.savings), borderColor:'#e53e3e',
+    backgroundColor:'rgba(229,62,62,0.1)', borderWidth:3, pointRadius:6,
+    pointBackgroundColor:monthResults.map(r=>planColorMap[r.best.plan.name]||'#e53e3e'),
+    pointBorderColor:'#e53e3e', pointBorderWidth:2, fill:false, tension:0.1, order:0
+  });
+  optChart=new Chart(document.getElementById('optChart'),{
+    type:'bar', data:{labels:D.monthLabelsShort, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true, position:'top', labels:{font:{size:12}, usePointStyle:true, padding:14}},
+        tooltip:{callbacks:{label:ctx=>{
+          const val=ctx.parsed.y;
+          if(ctx.dataset.type==='line'){const mr=monthResults[ctx.dataIndex];return `Best: ${mr.best.plan.name} - ${val.toFixed(0)} ILS`;}
+          return `${ctx.dataset.label}: ${val.toFixed(0)} ILS`;
+        }}}
+      },
+      scales:{
+        y:{beginAtZero:true, grid:{color:'#edf2f7'}, title:{display:true,text:'Monthly Savings (ILS)',font:{size:12}}, ticks:{callback:v=>v+' ILS'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+  let thtml='<table><thead><tr><th>Month</th><th>IEC Bill</th>';
+  supPlans.forEach(p=>{thtml+=`<th>${p.name}</th>`;});
+  thtml+='<th style="color:#e53e3e">Best Pick</th></tr></thead><tbody>';
+  monthResults.forEach(r=>{
+    thtml+=`<tr><td>${r.monthLabel}</td><td>${r.best.iecCost.toFixed(0)} ILS</td>`;
+    r.allPlans.forEach(ps=>{
+      const isBest=ps.plan.id===r.best.plan.id;
+      const style=isBest?'color:#38a169;font-weight:700;background:#f0fff4':'color:#38a169';
+      thtml+=`<td style="${style}">-${ps.savings.toFixed(0)} ILS (${ps.savingsPct.toFixed(1)}%)</td>`;
+    });
+    const bg=planColorMap[r.best.plan.name]||'#718096';
+    thtml+=`<td style="font-weight:700"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${bg};margin-right:4px"></span>${r.best.plan.name}</td></tr>`;
+  });
+  thtml+='<tr style="border-top:2px solid #cbd5e0;font-weight:700"><td>Year Total</td><td>'+yearIec.toFixed(0)+' ILS</td>';
+  supPlans.forEach(plan=>{
+    const data=calcPlanSavings(plan); const ys=data.reduce((s,d)=>s+d.savings,0);
+    thtml+=`<td style="color:#38a169">-${ys.toFixed(0)} ILS</td>`;
+  });
+  thtml+=`<td style="color:#e53e3e;font-weight:700">-${optimalTotal.toFixed(0)} ILS</td></tr></tbody></table>`;
+  document.getElementById('optTable').innerHTML=thtml;
+}
+
+// -- Heatmap --
+function renderHeatmap() {
+  function getHeatColor(value, min, max) {
+    const ratio=max===min?0:(value-min)/(max-min);
+    let r,g,b;
+    if(ratio<0.5){const t=ratio*2; r=Math.round(59+(255-59)*t); g=Math.round(130+(204-130)*t); b=Math.round(206-206*t);}
+    else{const t=(ratio-0.5)*2; r=Math.round(255-(255-220)*t); g=Math.round(204-(204-50)*t); b=Math.round(0+20*t);}
+    return `rgb(${r},${g},${b})`;
+  }
+  const allVals=D.heatmapRaw.flat();
+  const hMin=Math.min(...allVals), hMax=Math.max(...allVals);
+  let html='<table class="heatmap-table"><thead><tr><th>Hour</th>';
+  D.monthLabelsShort.forEach(m=>{html+=`<th>${m}</th>`;});
+  html+='</tr></thead><tbody>';
+  for(let h=0;h<24;h++){
+    html+=`<tr><th>${h.toString().padStart(2,'0')}:00</th>`;
+    for(let mi=0;mi<D.monthLabelsShort.length;mi++){
+      const val=D.heatmapRaw[mi][h];
+      const bg=getHeatColor(val,hMin,hMax);
+      const tc=val>(hMin+hMax)*0.6?'#fff':'#1a202c';
+      html+=`<td style="background:${bg};color:${tc}">${val.toFixed(2)}</td>`;
+    }
+    html+='</tr>';
+  }
+  html+='</tbody></table>';
+  document.getElementById('heatmapContainer').innerHTML=html;
+}
+
+// ===== INTERACTION HANDLERS =====
+function addCustomRange() {
+  const name=document.getElementById('rangeName').value.trim()||`Range ${activeRanges.length+1}`;
+  const from=parseInt(document.getElementById('rangeFrom').value);
+  const to=parseInt(document.getElementById('rangeTo').value);
+  if(from===to){alert('Start and end hour cannot be the same.');return;}
+  if(activeRanges.length>=6){alert('Maximum 6 ranges allowed.');return;}
+  if(activeRanges.some(r=>r.from===from&&r.to===to)){alert('This range already exists.');return;}
+  activeRanges.push({name,from,to});
+  document.getElementById('rangeName').value='';
+  renderRangesTags(); renderCompareChart();
+}
+function addPreset(name,from,to) {
+  if(activeRanges.some(r=>r.from===from&&r.to===to)) return;
+  if(activeRanges.length>=6){alert('Maximum 6 ranges allowed.');return;}
+  activeRanges.push({name,from,to});
+  renderRangesTags(); renderCompareChart();
+}
+function removeRange(index) { activeRanges.splice(index,1); renderRangesTags(); renderCompareChart(); }
+function clearAllRanges() { activeRanges=[]; renderRangesTags(); renderCompareChart(); }
+function setMetric(metric,btn) {
+  currentMetric=metric;
+  btn.closest('.metric-toggle').querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderCompareChart();
+}
+function setDayFilter(filter,btn) {
+  currentDayFilter=filter;
+  btn.closest('.metric-toggle').querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderCompareChart();
+}
+function filterSupplier(sup,btn) {
+  supplierFilter=sup;
+  document.getElementById('supplierFilterRow').querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderPlanGrid();
+}
+function togglePlan(id) {
+  if(selectedPlans.has(id)) selectedPlans.delete(id);
+  else if(selectedPlans.size<6) selectedPlans.add(id);
+  else{alert('Max 6 plans at once.');return;}
+  renderPlanGrid(); renderSupplierChart();
+}
+function setOptProvider(sup,btn) {
+  optProvider=sup;
+  document.getElementById('optProviderRow').querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderOptimal();
+}
+
+// ===== INIT DASHBOARD =====
+function initDashboard(meterCode) {
+  // Subtitle
+  document.getElementById('subtitle').textContent =
+    `Meter #${meterCode || 'Unknown'} | ${D.firstDay} to ${D.lastDay} | 15-min interval readings`;
+
+  // Stat cards
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card"><div class="value">${Math.round(D.totalKwh).toLocaleString()}</div><div class="label">Total kWh</div></div>
+    <div class="stat-card"><div class="value">${D.peakMonthVal.toLocaleString()}</div><div class="label">Peak Month (${D.peakMonthLabel})</div></div>
+    <div class="stat-card"><div class="value">${D.peakHour.toString().padStart(2,'0')}:00</div><div class="label">Peak Hour</div></div>
+    <div class="stat-card"><div class="value">${D.avgDailyKwh}</div><div class="label">Avg kWh/Day</div></div>`;
+
+  const blue='#3182ce', blueBg='rgba(49,130,206,0.15)', orange='#dd6b20';
+
+  // Monthly bar chart
+  const monthlyValues=D.sortedMonthKeys.map(mk=>D.monthlyAllTotals[mk]);
+  const maxMV=Math.max(...monthlyValues);
+  const monthlyColors=monthlyValues.map(v=>{
+    const ratio=v/maxMV;
+    const r=Math.round(49+(221-49)*ratio), g=Math.round(130+(107-130)*ratio), b=Math.round(206+(32-206)*ratio);
+    return `rgba(${r},${g},${b},0.85)`;
+  });
+  if(monthlyChartInst) monthlyChartInst.destroy();
+  monthlyChartInst=new Chart(document.getElementById('monthlyChart'),{
+    type:'bar', data:{labels:D.monthLabelsShort, datasets:[{label:'kWh',data:monthlyValues,backgroundColor:monthlyColors,borderRadius:6,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y.toLocaleString()} kWh`}}},
+      scales:{y:{beginAtZero:true,grid:{color:'#edf2f7'},ticks:{callback:v=>v.toLocaleString()}},x:{grid:{display:false}}}}
+  });
+
+  // Hourly line chart
+  const hourLabels=Array.from({length:24},(_,i)=>`${i.toString().padStart(2,'0')}:00`);
+  const hourlyVals=hourLabels.map((_,i)=>D.hourlyAvg[i]);
+  if(hourlyChartInst) hourlyChartInst.destroy();
+  hourlyChartInst=new Chart(document.getElementById('hourlyChart'),{
+    type:'line', data:{labels:hourLabels, datasets:[{label:'Avg kWh',data:hourlyVals,borderColor:orange,backgroundColor:'rgba(221,107,32,0.12)',fill:true,tension:0.4,pointRadius:4,pointBackgroundColor:orange,pointHoverRadius:7}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y.toFixed(4)} kWh avg per 15-min`}}},
+      scales:{y:{beginAtZero:true,grid:{color:'#edf2f7'}},x:{grid:{display:false},ticks:{maxRotation:45}}}}
+  });
+
+  // Daily line chart
+  const dailyLabels=D.dailyKeys.map(d=>{const p=d.split('-');return `${p[2]}/${p[1]}`;});
+  if(dailyChartInst) dailyChartInst.destroy();
+  dailyChartInst=new Chart(document.getElementById('dailyChart'),{
+    type:'line', data:{labels:dailyLabels, datasets:[{label:'Daily kWh',data:D.dailyVals,borderColor:blue,backgroundColor:blueBg,fill:true,tension:0.2,pointRadius:0,pointHoverRadius:5,borderWidth:1.5}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:ctx=>D.dailyKeys[ctx[0].dataIndex],label:ctx=>`${ctx.parsed.y.toFixed(1)} kWh`}}},
+      scales:{y:{beginAtZero:true,grid:{color:'#edf2f7'},title:{display:true,text:'kWh'}},x:{grid:{display:false},ticks:{maxTicksLimit:20,maxRotation:45}}}}
+  });
+
+  // Populate hour selects
+  const fromSel=document.getElementById('rangeFrom'), toSel=document.getElementById('rangeTo');
+  fromSel.innerHTML=''; toSel.innerHTML='';
+  for(let h=0;h<24;h++){
+    const label=`${h.toString().padStart(2,'0')}:00`;
+    fromSel.add(new Option(label,h)); toSel.add(new Option(label,h));
+  }
+  fromSel.value=23; toSel.value=7;
+
+  // Reset ranges and init with presets
+  activeRanges=[]; currentMetric='avgDaily'; currentDayFilter='all';
+  addPreset('Night',23,7); addPreset('Afternoon-Evening',14,20);
+
+  // Supplier filter buttons
+  const filterRow=document.getElementById('supplierFilterRow');
+  filterRow.innerHTML=`<button class="active" onclick="filterSupplier('all',this)">All</button>`+
+    allSuppliers.map(s=>`<button onclick="filterSupplier('${s}',this)">${s}</button>`).join('');
+  selectedPlans=new Set(['pazgas_flat','cellcom_night','electra_night']);
+  supplierFilter='all';
+  renderPlanGrid(); renderSupplierChart();
+
+  // Optimal switcher
+  optProvider=allSuppliers[0];
+  const optRow=document.getElementById('optProviderRow');
+  optRow.innerHTML=allSuppliers.map((s,i)=>`<button class="${i===0?'active':''}" onclick="setOptProvider('${s}',this)">${s}</button>`).join('');
+  renderOptimal();
+
+  // Heatmap
+  renderHeatmap();
+}
+
+// ===== RESET =====
+function resetDashboard() {
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('uploadScreen').style.display='flex';
+  document.getElementById('csvInput').value='';
+  D=null;
+}
+
+// ===== FILE UPLOAD =====
+const uploadZone=document.getElementById('uploadZone');
+const csvInput=document.getElementById('csvInput');
+const errorDiv=document.getElementById('uploadError');
+
+uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.classList.add('dragover');});
+uploadZone.addEventListener('dragleave',()=>{uploadZone.classList.remove('dragover');});
+uploadZone.addEventListener('drop',e=>{
+  e.preventDefault(); uploadZone.classList.remove('dragover');
+  const file=e.dataTransfer.files[0];
+  if(file) handleFile(file);
+});
+csvInput.addEventListener('change',e=>{
+  const file=e.target.files[0];
+  if(file) handleFile(file);
+});
+
+function handleFile(file) {
+  errorDiv.style.display='none';
+  if(!file.name.toLowerCase().endsWith('.csv')){
+    errorDiv.textContent='Please upload a CSV file.'; errorDiv.style.display='block'; return;
+  }
+  const reader=new FileReader();
+  reader.onload=function(event){
+    try {
+      const {readings, meterCode} = parseCSV(event.target.result);
+      if(readings.length<10){
+        errorDiv.textContent=`Only ${readings.length} data rows found. Make sure this is an IEC meter export CSV with date (DD/MM/YYYY) and time (HH:MM) columns.`;
+        errorDiv.style.display='block'; return;
+      }
+      D = aggregateData(readings);
+      document.getElementById('uploadScreen').style.display='none';
+      document.getElementById('dashboard').style.display='block';
+      initDashboard(meterCode);
+    } catch(err) {
+      errorDiv.textContent='Error parsing CSV: '+err.message; errorDiv.style.display='block';
+    }
+  };
+  reader.readAsText(file);
+}
+</script>
+</body>
+</html>
