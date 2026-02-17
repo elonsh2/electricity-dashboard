@@ -282,6 +282,37 @@
   .btn-demo .demo-icon { font-size: 28px; }
   .btn-demo .demo-text { font-size: 16px; font-weight: 700; color: #2d3748; }
   .btn-demo .demo-hint { font-size: 12px; color: #a0aec0; max-width: 280px; }
+  /* Wizard */
+  .wizard-panel {
+    display: none; background: white; border-radius: 16px; padding: 28px 32px; margin-top: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 700px; width: 100%; text-align: left;
+  }
+  .wizard-panel.show { display: block; }
+  .wizard-panel h2 { font-size: 20px; color: #2d3748; margin-bottom: 4px; text-align: center; }
+  .wizard-panel .wiz-sub { font-size: 13px; color: #a0aec0; margin-bottom: 20px; text-align: center; }
+  .wiz-section { margin-bottom: 18px; }
+  .wiz-section .wiz-label {
+    font-size: 12px; color: #718096; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 8px;
+  }
+  .wiz-options { display: flex; gap: 8px; flex-wrap: wrap; }
+  .wiz-opt {
+    padding: 10px 16px; border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: #4a5568; background: #fff; transition: all 0.15s;
+    text-align: center; min-width: 80px;
+  }
+  .wiz-opt:hover { border-color: #a0aec0; }
+  .wiz-opt.active { border-color: #3182ce; background: #ebf8ff; color: #3182ce; }
+  .wiz-opt .wiz-opt-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+  .wiz-opt .wiz-opt-sub { font-size: 10px; color: #a0aec0; font-weight: 400; display: block; margin-top: 2px; }
+  .wiz-generate {
+    display: block; width: 100%; padding: 14px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, #3182ce, #2b6cb0); color: white;
+    font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-top: 20px;
+  }
+  .wiz-generate:hover { background: linear-gradient(135deg, #2b6cb0, #2c5282); }
+  .wiz-row { display: flex; gap: 16px; }
+  .wiz-row .wiz-section { flex: 1; }
   @media (max-width: 900px) {
     .grid { grid-template-columns: 1fr; }
     body { padding: 12px; }
@@ -309,11 +340,109 @@
   <div class="upload-divider">
     <span>or</span>
   </div>
-  <button class="btn-demo" onclick="loadDemo()">
+  <button class="btn-demo" onclick="toggleWizard()">
     <span class="demo-icon">&#9881;</span>
     <span class="demo-text">Try with Demo Data</span>
-    <span class="demo-hint">Generates a realistic year of consumption for a typical Israeli household</span>
+    <span class="demo-hint">Build a household profile and generate a realistic year of simulated consumption</span>
   </button>
+
+  <div class="wizard-panel" id="wizardPanel">
+    <h2>Build Your Household Profile</h2>
+    <p class="wiz-sub">Answer a few questions and we'll generate a realistic year of electricity data tailored to your household.</p>
+
+    <div class="wiz-row">
+      <div class="wiz-section">
+        <div class="wiz-label">Household Size</div>
+        <div class="wiz-options" data-wiz="people">
+          <div class="wiz-opt" data-val="1"><span class="wiz-opt-icon">&#128100;</span>1-2<span class="wiz-opt-sub">Single / Couple</span></div>
+          <div class="wiz-opt active" data-val="3"><span class="wiz-opt-icon">&#128106;</span>3-4<span class="wiz-opt-sub">Small family</span></div>
+          <div class="wiz-opt" data-val="5"><span class="wiz-opt-icon">&#128102;&#128103;</span>5+<span class="wiz-opt-sub">Large family</span></div>
+        </div>
+      </div>
+      <div class="wiz-section">
+        <div class="wiz-label">Apartment Size</div>
+        <div class="wiz-options" data-wiz="rooms">
+          <div class="wiz-opt" data-val="2"><span class="wiz-opt-icon">&#127968;</span>1-2 Rooms<span class="wiz-opt-sub">Studio / Small</span></div>
+          <div class="wiz-opt active" data-val="3"><span class="wiz-opt-icon">&#127970;</span>3-4 Rooms<span class="wiz-opt-sub">Standard</span></div>
+          <div class="wiz-opt" data-val="5"><span class="wiz-opt-icon">&#127971;</span>5+ / House<span class="wiz-opt-sub">Large / Villa</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wiz-section">
+      <div class="wiz-label">Region</div>
+      <div class="wiz-options" data-wiz="region">
+        <div class="wiz-opt" data-val="north"><span class="wiz-opt-icon">&#127795;</span>North<span class="wiz-opt-sub">Haifa, Galilee</span></div>
+        <div class="wiz-opt active" data-val="center"><span class="wiz-opt-icon">&#127961;</span>Center<span class="wiz-opt-sub">Tel Aviv, Sharon</span></div>
+        <div class="wiz-opt" data-val="jerusalem"><span class="wiz-opt-icon">&#9770;</span>Jerusalem & Hills<span class="wiz-opt-sub">Higher altitude</span></div>
+        <div class="wiz-opt" data-val="south"><span class="wiz-opt-icon">&#127774;</span>South<span class="wiz-opt-sub">Be'er Sheva, Negev</span></div>
+        <div class="wiz-opt" data-val="eilat"><span class="wiz-opt-icon">&#9832;</span>Eilat / Arava<span class="wiz-opt-sub">Extreme heat</span></div>
+      </div>
+    </div>
+
+    <div class="wiz-row">
+      <div class="wiz-section">
+        <div class="wiz-label">Work Pattern</div>
+        <div class="wiz-options" data-wiz="work">
+          <div class="wiz-opt active" data-val="office"><span class="wiz-opt-icon">&#128188;</span>Office<span class="wiz-opt-sub">Out most days</span></div>
+          <div class="wiz-opt" data-val="hybrid"><span class="wiz-opt-icon">&#128187;</span>Hybrid<span class="wiz-opt-sub">Home 2-3 days</span></div>
+          <div class="wiz-opt" data-val="wfh"><span class="wiz-opt-icon">&#127969;</span>WFH<span class="wiz-opt-sub">Home all week</span></div>
+        </div>
+      </div>
+      <div class="wiz-section">
+        <div class="wiz-label">AC Usage (Summer)</div>
+        <div class="wiz-options" data-wiz="ac">
+          <div class="wiz-opt" data-val="none"><span class="wiz-opt-icon">&#127744;</span>None</div>
+          <div class="wiz-opt" data-val="light"><span class="wiz-opt-icon">&#129407;</span>Evenings<span class="wiz-opt-sub">18:00-23:00</span></div>
+          <div class="wiz-opt active" data-val="moderate"><span class="wiz-opt-icon">&#10052;</span>Moderate<span class="wiz-opt-sub">Afternoon+Eve</span></div>
+          <div class="wiz-opt" data-val="heavy"><span class="wiz-opt-icon">&#127784;</span>All Day<span class="wiz-opt-sub">10:00-23:00</span></div>
+          <div class="wiz-opt" data-val="overnight"><span class="wiz-opt-icon">&#127769;</span>+ Night<span class="wiz-opt-sub">Also overnight</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wiz-row">
+      <div class="wiz-section">
+        <div class="wiz-label">Water Heating</div>
+        <div class="wiz-options" data-wiz="boiler">
+          <div class="wiz-opt active" data-val="solar"><span class="wiz-opt-icon">&#9728;</span>Solar Only<span class="wiz-opt-sub">Dud Shemesh</span></div>
+          <div class="wiz-opt" data-val="boiler1"><span class="wiz-opt-icon">&#128167;</span>Boiler 1x/day<span class="wiz-opt-sub">Winter mainly</span></div>
+          <div class="wiz-opt" data-val="boiler2"><span class="wiz-opt-icon">&#128168;</span>Boiler 2x/day<span class="wiz-opt-sub">Year-round</span></div>
+        </div>
+      </div>
+      <div class="wiz-section">
+        <div class="wiz-label">Laundry</div>
+        <div class="wiz-options" data-wiz="laundry">
+          <div class="wiz-opt" data-val="low"><span class="wiz-opt-icon">&#128084;</span>2-3x/week<span class="wiz-opt-sub">Low</span></div>
+          <div class="wiz-opt active" data-val="medium"><span class="wiz-opt-icon">&#128085;</span>4-5x/week<span class="wiz-opt-sub">Medium</span></div>
+          <div class="wiz-opt" data-val="high"><span class="wiz-opt-icon">&#128090;</span>Daily+<span class="wiz-opt-sub">Large family</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wiz-row">
+      <div class="wiz-section">
+        <div class="wiz-label">Laundry Time</div>
+        <div class="wiz-options" data-wiz="laundryTime">
+          <div class="wiz-opt active" data-val="morning"><span class="wiz-opt-icon">&#127749;</span>Morning<span class="wiz-opt-sub">07:00-10:00</span></div>
+          <div class="wiz-opt" data-val="afternoon"><span class="wiz-opt-icon">&#9728;</span>Afternoon<span class="wiz-opt-sub">13:00-16:00</span></div>
+          <div class="wiz-opt" data-val="evening"><span class="wiz-opt-icon">&#127751;</span>Evening<span class="wiz-opt-sub">19:00-22:00</span></div>
+          <div class="wiz-opt" data-val="night"><span class="wiz-opt-icon">&#127769;</span>Night<span class="wiz-opt-sub">23:00-02:00</span></div>
+        </div>
+      </div>
+      <div class="wiz-section">
+        <div class="wiz-label">Extras</div>
+        <div class="wiz-options" data-wiz="extras" data-multi="true">
+          <div class="wiz-opt" data-val="dryer"><span class="wiz-opt-icon">&#127744;</span>Dryer</div>
+          <div class="wiz-opt" data-val="ev"><span class="wiz-opt-icon">&#128664;</span>EV Charger<span class="wiz-opt-sub">Night charging</span></div>
+          <div class="wiz-opt" data-val="pool"><span class="wiz-opt-icon">&#127946;</span>Pool/Jacuzzi</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="wiz-generate" onclick="loadDemo()">Generate My Consumption Data</button>
+  </div>
+
   <div class="upload-error" id="uploadError"></div>
 </div>
 
@@ -1170,6 +1299,30 @@ function resetDashboard() {
   D=null;
 }
 
+// ===== WIZARD =====
+function toggleWizard() {
+  document.getElementById('wizardPanel').classList.toggle('show');
+}
+// Option click handler
+document.querySelectorAll('.wiz-options').forEach(group => {
+  const isMulti = group.dataset.multi === 'true';
+  group.querySelectorAll('.wiz-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      if (isMulti) { opt.classList.toggle('active'); }
+      else { group.querySelectorAll('.wiz-opt').forEach(o => o.classList.remove('active')); opt.classList.add('active'); }
+    });
+  });
+});
+function getWizVal(key) {
+  const group = document.querySelector(`.wiz-options[data-wiz="${key}"]`);
+  if (!group) return null;
+  if (group.dataset.multi === 'true') {
+    return [...group.querySelectorAll('.wiz-opt.active')].map(o => o.dataset.val);
+  }
+  const active = group.querySelector('.wiz-opt.active');
+  return active ? active.dataset.val : null;
+}
+
 // ===== FILE UPLOAD =====
 const uploadZone=document.getElementById('uploadZone');
 const csvInput=document.getElementById('csvInput');
@@ -1188,96 +1341,125 @@ csvInput.addEventListener('change',e=>{
 });
 
 // ===== DEMO DATA GENERATOR =====
-function generateDemoData() {
+// Based on Israeli household data: avg 903 kWh/mo, summer 1203, winter 867
+// Appliances: AC ~1-1.5 kWh/hr effective, washer ~3 kWh/cycle, dryer ~4.5, boiler ~2.5/hr
+function generateDemoData(cfg) {
   const readings = [];
   const year = 2025;
-  // Monthly avg daily kWh - wider range, with randomized base per run
-  const seasonCurve = [22, 20, 18, 16, 22, 32, 40, 42, 34, 20, 17, 20];
-  // Randomize the base: scale whole curve by 0.7-1.4 for household size variety
-  const houseScale = 0.7 + Math.random() * 0.7;
-  const monthlyBase = seasonCurve.map(v => v * houseScale);
 
-  // Several hourly profile archetypes
-  const profiles = {
-    normal: [0.020,0.018,0.016,0.015,0.015,0.016, 0.025,0.045,0.050,0.040,0.035,0.032, 0.030,0.030,0.035,0.040,0.048,0.060, 0.070,0.080,0.085,0.075,0.060,0.040],
-    nightOwl: [0.065,0.058,0.050,0.040,0.030,0.020, 0.012,0.018,0.025,0.028,0.026,0.024, 0.024,0.026,0.028,0.034,0.042,0.055, 0.065,0.075,0.082,0.080,0.072,0.068],
-    wfh: [0.018,0.015,0.014,0.013,0.013,0.015, 0.025,0.040,0.058,0.065,0.062,0.058, 0.055,0.055,0.058,0.060,0.058,0.055, 0.058,0.060,0.058,0.048,0.035,0.022],
-    earlyBird: [0.015,0.013,0.012,0.012,0.018,0.035, 0.060,0.072,0.068,0.058,0.048,0.040, 0.035,0.035,0.038,0.042,0.048,0.058, 0.068,0.070,0.062,0.048,0.032,0.020],
-    nightAC: [0.068,0.065,0.060,0.055,0.048,0.035, 0.020,0.022,0.025,0.025,0.024,0.024, 0.028,0.035,0.042,0.048,0.050,0.050, 0.052,0.055,0.054,0.050,0.055,0.065],
-    evCharger: [0.080,0.078,0.072,0.065,0.055,0.035, 0.015,0.018,0.022,0.025,0.025,0.025, 0.025,0.025,0.028,0.032,0.038,0.048, 0.055,0.058,0.055,0.048,0.060,0.075]
+  // Base daily kWh from household size + apartment
+  const peopleBase = {1: 10, 3: 17, 5: 26}[cfg.people] || 17;
+  const roomsScale = {2: 0.75, 3: 1.0, 5: 1.35}[cfg.rooms] || 1.0;
+  const baseDaily = peopleBase * roomsScale;
+
+  // Seasonal curve by region [Jan..Dec] multipliers
+  const seasonByRegion = {
+    north:     [1.15, 1.05, 0.90, 0.75, 0.85, 1.25, 1.55, 1.60, 1.30, 0.85, 0.80, 1.10],
+    center:    [1.05, 0.95, 0.85, 0.75, 0.95, 1.45, 1.80, 1.90, 1.50, 0.90, 0.78, 1.00],
+    jerusalem: [1.30, 1.15, 0.90, 0.75, 0.80, 1.20, 1.45, 1.50, 1.20, 0.85, 0.90, 1.25],
+    south:     [0.95, 0.88, 0.80, 0.75, 1.10, 1.70, 2.10, 2.20, 1.75, 1.00, 0.78, 0.90],
+    eilat:     [0.90, 0.85, 0.82, 0.85, 1.30, 2.10, 2.60, 2.70, 2.15, 1.20, 0.82, 0.88]
   };
-  const profileKeys = Object.keys(profiles);
+  const season = seasonByRegion[cfg.region] || seasonByRegion.center;
 
-  // Assign a random profile to each month (with bias: summer tends nightAC, spring normal/wfh)
-  const monthProfiles = [];
-  for (let m = 0; m < 12; m++) {
-    const r = Math.random();
-    if (m >= 5 && m <= 8) { // summer - heavy night AC/EV, some normal
-      monthProfiles.push(r < 0.30 ? 'nightAC' : r < 0.50 ? 'evCharger' : r < 0.70 ? 'nightOwl' : r < 0.85 ? 'normal' : 'wfh');
-    } else if (m >= 2 && m <= 4) { // spring - more WFH/normal/earlyBird
-      monthProfiles.push(r < 0.30 ? 'wfh' : r < 0.55 ? 'normal' : r < 0.70 ? 'earlyBird' : r < 0.85 ? 'nightOwl' : 'evCharger');
-    } else { // winter - wide mix
-      monthProfiles.push(r < 0.20 ? 'nightOwl' : r < 0.40 ? 'evCharger' : r < 0.60 ? 'normal' : r < 0.75 ? 'earlyBird' : r < 0.90 ? 'wfh' : 'nightAC');
-    }
+  // Hourly profile from work pattern
+  const profiles = {
+    office: [0.020,0.018,0.016,0.015,0.015,0.016, 0.022,0.042,0.048,0.032,0.025,0.022, 0.020,0.020,0.022,0.028,0.042,0.062, 0.078,0.090,0.092,0.082,0.065,0.038],
+    hybrid: [0.020,0.018,0.016,0.015,0.015,0.016, 0.024,0.042,0.052,0.048,0.042,0.038, 0.036,0.036,0.040,0.044,0.050,0.058, 0.068,0.078,0.080,0.072,0.058,0.035],
+    wfh:    [0.018,0.016,0.014,0.013,0.013,0.015, 0.022,0.038,0.055,0.062,0.060,0.058, 0.055,0.052,0.055,0.058,0.056,0.054, 0.060,0.068,0.068,0.058,0.042,0.025]
+  };
+  const baseShape = profiles[cfg.work] || profiles.office;
+
+  // AC config
+  const acKwhPerHour = {none:0, light:1.0, moderate:1.2, heavy:1.4, overnight:1.3}[cfg.ac] || 1.2;
+  const acHours = {
+    none:[], light:[18,19,20,21,22], moderate:[14,15,16,17,18,19,20,21,22],
+    heavy:[10,11,12,13,14,15,16,17,18,19,20,21,22],
+    overnight:[10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4,5,6]
+  }[cfg.ac] || [];
+  const acMonths = cfg.region==='eilat'?[3,4,5,6,7,8,9,10]: cfg.region==='south'?[4,5,6,7,8,9]: [5,6,7,8];
+  const acRoomScale = {2:0.6, 3:1.0, 5:1.6}[cfg.rooms] || 1.0;
+
+  // Boiler config
+  const boilerCfg = {
+    solar:   {wKwh:2.5, sKwh:0,   times:0.5, hours:[6,7]},
+    boiler1: {wKwh:2.5, sKwh:1.5, times:1,   hours:[6,7,18,19]},
+    boiler2: {wKwh:2.5, sKwh:2.0, times:2,   hours:[6,7,18,19]}
+  }[cfg.boiler] || {wKwh:0,sKwh:0,times:0,hours:[]};
+
+  // Laundry config
+  const laundryFreq = {low:2.5, medium:4.5, high:7}[cfg.laundry] || 4.5;
+  const laundryHrs = {morning:[7,8,9], afternoon:[13,14,15], evening:[19,20,21], night:[23,0,1]}[cfg.laundryTime] || [7,8,9];
+  const hasDryer = cfg.extras.includes('dryer');
+  const kwhPerWash = 3.0 + (hasDryer ? 4.5 : 0);
+  const hasEV = cfg.extras.includes('ev');
+  const hasPool = cfg.extras.includes('pool');
+  const evHours = [23,0,1,2,3,4];
+
+  // Weekend shape modifier
+  function makeWEShape(shape) {
+    const we=[...shape];
+    we[5]*=0.5;we[6]*=0.5;we[7]*=0.65;we[9]*=1.5;we[10]*=1.6;we[11]*=1.5;
+    we[13]*=1.3;we[14]*=1.3;we[15]*=1.2;we[16]*=1.2;
+    const s=we.reduce((a,b)=>a+b,0); return we.map(v=>v/s);
   }
+  const normS=baseShape.reduce((a,b)=>a+b,0);
+  const normShape=baseShape.map(v=>v/normS);
+  const weShape=makeWEShape(baseShape);
 
-  // Weekend profile: always shift towards later mornings and more daytime
-  function makeWeekendShape(shape) {
-    const we = [...shape];
-    // Reduce early morning (5-7), boost mid-morning (9-11) and afternoon (13-16)
-    we[5] *= 0.6; we[6] *= 0.5; we[7] *= 0.7;
-    we[9] *= 1.4; we[10] *= 1.5; we[11] *= 1.4;
-    we[13] *= 1.3; we[14] *= 1.3; we[15] *= 1.2; we[16] *= 1.2;
-    // Normalize so it sums to 1
-    const sum = we.reduce((a, b) => a + b, 0);
-    return we.map(v => v / sum);
-  }
+  for (let m=0;m<12;m++) {
+    const daysInMonth=new Date(year,m+1,0).getDate();
+    const monthMult=season[m];
+    const isSummer=acMonths.includes(m);
+    const isWinter=(m<=1||m===11);
+    const boilerKwh=isWinter?boilerCfg.wKwh*boilerCfg.times:
+                    isSummer?boilerCfg.sKwh*boilerCfg.times*0.3:
+                    boilerCfg.wKwh*boilerCfg.times*0.6;
 
-  for (let m = 0; m < 12; m++) {
-    const daysInMonth = new Date(year, m + 1, 0).getDate();
-    // Randomize monthly base further: +/-35%
-    const monthFactor = 0.65 + Math.random() * 0.7;
-    const baseDaily = monthlyBase[m] * monthFactor;
-    const shape = profiles[monthProfiles[m]];
-    // Normalize shape to sum to 1
-    const shapeSum = shape.reduce((a, b) => a + b, 0);
-    const normShape = shape.map(v => v / shapeSum);
-    const weShape = makeWeekendShape(shape);
+    for (let d=1;d<=daysInMonth;d++) {
+      const dateObj=new Date(year,m,d);
+      const dow=dateObj.getDay();
+      const isWeekend=dow===5||dow===6;
+      const monthKey=`${year}-${String(m+1).padStart(2,'0')}`;
+      const dayKey=`${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateObj = new Date(year, m, d);
-      const dow = dateObj.getDay();
-      const isWeekend = dow === 5 || dow === 6;
-      const monthKey = `${year}-${String(m + 1).padStart(2, '0')}`;
-      const dayKey = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      let dayFactor=0.75+Math.random()*0.5;
+      if(Math.random()<0.06) dayFactor*=1.4+Math.random()*0.4;
+      if(Math.random()<0.04) dayFactor*=0.2+Math.random()*0.15;
+      const weFactor=isWeekend?(1.08+Math.random()*0.12):1.0;
+      const dailyBase=baseDaily*monthMult*dayFactor*weFactor;
+      const shape=isWeekend?weShape:normShape;
 
-      // Daily variation: +/-35%, occasional spikes (guests, laundry day)
-      let dayFactor = 0.65 + Math.random() * 0.7;
-      if (Math.random() < 0.08) dayFactor *= 1.5 + Math.random() * 0.5; // ~8% spike days
-      if (Math.random() < 0.05) dayFactor *= 0.3 + Math.random() * 0.2; // ~5% vacation/away days
-      const weFactor = isWeekend ? (1.05 + Math.random() * 0.15) : 1.0;
-      const dailyKwh = baseDaily * dayFactor * weFactor;
-      const useShape = isWeekend ? weShape : normShape;
+      const laundryToday=Math.random()<(laundryFreq/7);
+      const evToday=hasEV&&Math.random()<(isWeekend?0.5:0.7);
 
-      for (let h = 0; h < 24; h++) {
-        for (let q = 0; q < 4; q++) {
-          let kwh = dailyKwh * useShape[h] / 4;
-          // Per-interval noise: +/-40%
-          kwh *= (0.6 + Math.random() * 0.8);
-          // Summer night AC: extra load 23:00-06:00 in Jun-Sep
-          if (m >= 5 && m <= 8 && (h >= 23 || h <= 5)) {
-            kwh *= 1.2 + Math.random() * 0.8;
+      for (let h=0;h<24;h++) {
+        for (let q=0;q<4;q++) {
+          let kwh=dailyBase*shape[h]/4;
+          kwh*=(0.65+Math.random()*0.7);
+
+          if(isSummer&&acHours.includes(h)){
+            const heatM=m===7?1.15:m===6?1.1:m===8?1.05:0.85;
+            kwh+=(acKwhPerHour*acRoomScale*heatM*(0.6+Math.random()*0.8))/4;
           }
-          // Winter evening heating: Dec-Feb 17:00-23:00
-          if ((m <= 1 || m === 11) && h >= 17 && h <= 23) {
-            kwh *= 1.0 + Math.random() * 0.2;
+          if(boilerKwh>0&&boilerCfg.hours.includes(h)){
+            kwh+=(boilerKwh/boilerCfg.hours.length*(0.7+Math.random()*0.6))/4;
           }
-          // Summer daytime AC: Jun-Sep 11:00-17:00
-          if (m >= 5 && m <= 8 && h >= 11 && h <= 17) {
-            kwh *= 1.0 + Math.random() * 0.3;
+          if(isWinter&&h>=17&&h<=22){
+            const heat=cfg.region==='jerusalem'?0.4:cfg.region==='north'?0.3:0.15;
+            kwh+=heat*(0.5+Math.random())/4;
           }
-          kwh = Math.max(0.005, Math.round(kwh * 1000) / 1000);
-          readings.push({ monthKey, dayKey, hour: h, kwh, isWeekend, dateObj });
+          if(laundryToday&&laundryHrs.includes(h)&&q===0){
+            kwh+=kwhPerWash/laundryHrs.length*(0.7+Math.random()*0.6);
+          }
+          if(evToday&&evHours.includes(h)){
+            kwh+=(7.5/evHours.length*(0.8+Math.random()*0.4))/4;
+          }
+          if(hasPool&&h>=8&&h<=15){
+            kwh+=(isSummer?0.6:0.35)*(0.7+Math.random()*0.6)/4;
+          }
+          kwh=Math.max(0.005,Math.round(kwh*1000)/1000);
+          readings.push({monthKey,dayKey,hour:h,kwh,isWeekend,dateObj});
         }
       }
     }
@@ -1286,11 +1468,20 @@ function generateDemoData() {
 }
 
 function loadDemo() {
-  const readings = generateDemoData();
-  D = aggregateData(readings);
-  document.getElementById('uploadScreen').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-  initDashboard('DEMO-2025');
+  const cfg={
+    people:getWizVal('people')||'3', rooms:getWizVal('rooms')||'3',
+    region:getWizVal('region')||'center', work:getWizVal('work')||'office',
+    ac:getWizVal('ac')||'moderate', boiler:getWizVal('boiler')||'solar',
+    laundry:getWizVal('laundry')||'medium', laundryTime:getWizVal('laundryTime')||'morning',
+    extras:getWizVal('extras')||[]
+  };
+  const regNames={north:'North',center:'Center',jerusalem:'Jerusalem',south:'South',eilat:'Eilat'};
+  const label=`DEMO-${cfg.people}p-${regNames[cfg.region]}-${cfg.work}`;
+  const readings=generateDemoData(cfg);
+  D=aggregateData(readings);
+  document.getElementById('uploadScreen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  initDashboard(label);
 }
 
 function handleFile(file) {
