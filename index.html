@@ -75,7 +75,19 @@
     color: #4a5568;
     margin-bottom: 16px;
     font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
   }
+  .chart-card h2:hover { color: #2d3748; }
+  .chart-card h2 .collapse-arrow {
+    font-size: 12px; color: #a0aec0; transition: transform 0.2s; margin-left: 10px; flex-shrink: 0;
+  }
+  .chart-card.collapsed h2 { margin-bottom: 0; }
+  .chart-card.collapsed h2 .collapse-arrow { transform: rotate(-90deg); }
+  .chart-card.collapsed > *:not(h2) { display: none !important; }
   .chart-container {
     position: relative;
     width: 100%;
@@ -254,6 +266,22 @@
     margin-top: 16px; padding: 12px 20px; background: #fff5f5; border: 1px solid #fc8181;
     border-radius: 8px; color: #c53030; font-size: 13px; display: none;
   }
+  .upload-divider {
+    display: flex; align-items: center; gap: 16px; margin: 24px 0; width: 300px;
+  }
+  .upload-divider::before, .upload-divider::after {
+    content: ''; flex: 1; height: 1px; background: #cbd5e0;
+  }
+  .upload-divider span { color: #a0aec0; font-size: 13px; font-weight: 600; }
+  .btn-demo {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 20px 40px; border: 2px solid #e2e8f0; border-radius: 14px;
+    background: white; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-demo:hover { border-color: #3182ce; background: #ebf8ff; }
+  .btn-demo .demo-icon { font-size: 28px; }
+  .btn-demo .demo-text { font-size: 16px; font-weight: 700; color: #2d3748; }
+  .btn-demo .demo-hint { font-size: 12px; color: #a0aec0; max-width: 280px; }
   @media (max-width: 900px) {
     .grid { grid-template-columns: 1fr; }
     body { padding: 12px; }
@@ -278,6 +306,14 @@
     IEC meter export with columns: meter code, type, date (DD/MM/YYYY), time (HH:MM), consumption (kWh), feed-in (kWh).<br>
     Data rows typically start after a header section.
   </div>
+  <div class="upload-divider">
+    <span>or</span>
+  </div>
+  <button class="btn-demo" onclick="loadDemo()">
+    <span class="demo-icon">&#9881;</span>
+    <span class="demo-text">Try with Demo Data</span>
+    <span class="demo-hint">Generates a realistic year of consumption for a typical Israeli household</span>
+  </button>
   <div class="upload-error" id="uploadError"></div>
 </div>
 
@@ -1112,6 +1148,18 @@ function initDashboard(meterCode) {
 
   // Heatmap
   renderHeatmap();
+
+  // Collapsible sections: add arrow to every h2 and toggle on click
+  document.querySelectorAll('.chart-card h2').forEach(h2 => {
+    if (h2.querySelector('.collapse-arrow')) return; // already set up
+    const arrow = document.createElement('span');
+    arrow.className = 'collapse-arrow';
+    arrow.textContent = '\u25BC';
+    h2.appendChild(arrow);
+    h2.addEventListener('click', () => {
+      h2.closest('.chart-card').classList.toggle('collapsed');
+    });
+  });
 }
 
 // ===== RESET =====
@@ -1138,6 +1186,112 @@ csvInput.addEventListener('change',e=>{
   const file=e.target.files[0];
   if(file) handleFile(file);
 });
+
+// ===== DEMO DATA GENERATOR =====
+function generateDemoData() {
+  const readings = [];
+  const year = 2025;
+  // Monthly avg daily kWh - wider range, with randomized base per run
+  const seasonCurve = [22, 20, 18, 16, 22, 32, 40, 42, 34, 20, 17, 20];
+  // Randomize the base: scale whole curve by 0.7-1.4 for household size variety
+  const houseScale = 0.7 + Math.random() * 0.7;
+  const monthlyBase = seasonCurve.map(v => v * houseScale);
+
+  // Several hourly profile archetypes
+  const profiles = {
+    normal: [0.020,0.018,0.016,0.015,0.015,0.016, 0.025,0.045,0.050,0.040,0.035,0.032, 0.030,0.030,0.035,0.040,0.048,0.060, 0.070,0.080,0.085,0.075,0.060,0.040],
+    nightOwl: [0.065,0.058,0.050,0.040,0.030,0.020, 0.012,0.018,0.025,0.028,0.026,0.024, 0.024,0.026,0.028,0.034,0.042,0.055, 0.065,0.075,0.082,0.080,0.072,0.068],
+    wfh: [0.018,0.015,0.014,0.013,0.013,0.015, 0.025,0.040,0.058,0.065,0.062,0.058, 0.055,0.055,0.058,0.060,0.058,0.055, 0.058,0.060,0.058,0.048,0.035,0.022],
+    earlyBird: [0.015,0.013,0.012,0.012,0.018,0.035, 0.060,0.072,0.068,0.058,0.048,0.040, 0.035,0.035,0.038,0.042,0.048,0.058, 0.068,0.070,0.062,0.048,0.032,0.020],
+    nightAC: [0.068,0.065,0.060,0.055,0.048,0.035, 0.020,0.022,0.025,0.025,0.024,0.024, 0.028,0.035,0.042,0.048,0.050,0.050, 0.052,0.055,0.054,0.050,0.055,0.065],
+    evCharger: [0.080,0.078,0.072,0.065,0.055,0.035, 0.015,0.018,0.022,0.025,0.025,0.025, 0.025,0.025,0.028,0.032,0.038,0.048, 0.055,0.058,0.055,0.048,0.060,0.075]
+  };
+  const profileKeys = Object.keys(profiles);
+
+  // Assign a random profile to each month (with bias: summer tends nightAC, spring normal/wfh)
+  const monthProfiles = [];
+  for (let m = 0; m < 12; m++) {
+    const r = Math.random();
+    if (m >= 5 && m <= 8) { // summer - heavy night AC/EV, some normal
+      monthProfiles.push(r < 0.30 ? 'nightAC' : r < 0.50 ? 'evCharger' : r < 0.70 ? 'nightOwl' : r < 0.85 ? 'normal' : 'wfh');
+    } else if (m >= 2 && m <= 4) { // spring - more WFH/normal/earlyBird
+      monthProfiles.push(r < 0.30 ? 'wfh' : r < 0.55 ? 'normal' : r < 0.70 ? 'earlyBird' : r < 0.85 ? 'nightOwl' : 'evCharger');
+    } else { // winter - wide mix
+      monthProfiles.push(r < 0.20 ? 'nightOwl' : r < 0.40 ? 'evCharger' : r < 0.60 ? 'normal' : r < 0.75 ? 'earlyBird' : r < 0.90 ? 'wfh' : 'nightAC');
+    }
+  }
+
+  // Weekend profile: always shift towards later mornings and more daytime
+  function makeWeekendShape(shape) {
+    const we = [...shape];
+    // Reduce early morning (5-7), boost mid-morning (9-11) and afternoon (13-16)
+    we[5] *= 0.6; we[6] *= 0.5; we[7] *= 0.7;
+    we[9] *= 1.4; we[10] *= 1.5; we[11] *= 1.4;
+    we[13] *= 1.3; we[14] *= 1.3; we[15] *= 1.2; we[16] *= 1.2;
+    // Normalize so it sums to 1
+    const sum = we.reduce((a, b) => a + b, 0);
+    return we.map(v => v / sum);
+  }
+
+  for (let m = 0; m < 12; m++) {
+    const daysInMonth = new Date(year, m + 1, 0).getDate();
+    // Randomize monthly base further: +/-35%
+    const monthFactor = 0.65 + Math.random() * 0.7;
+    const baseDaily = monthlyBase[m] * monthFactor;
+    const shape = profiles[monthProfiles[m]];
+    // Normalize shape to sum to 1
+    const shapeSum = shape.reduce((a, b) => a + b, 0);
+    const normShape = shape.map(v => v / shapeSum);
+    const weShape = makeWeekendShape(shape);
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(year, m, d);
+      const dow = dateObj.getDay();
+      const isWeekend = dow === 5 || dow === 6;
+      const monthKey = `${year}-${String(m + 1).padStart(2, '0')}`;
+      const dayKey = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+      // Daily variation: +/-35%, occasional spikes (guests, laundry day)
+      let dayFactor = 0.65 + Math.random() * 0.7;
+      if (Math.random() < 0.08) dayFactor *= 1.5 + Math.random() * 0.5; // ~8% spike days
+      if (Math.random() < 0.05) dayFactor *= 0.3 + Math.random() * 0.2; // ~5% vacation/away days
+      const weFactor = isWeekend ? (1.05 + Math.random() * 0.15) : 1.0;
+      const dailyKwh = baseDaily * dayFactor * weFactor;
+      const useShape = isWeekend ? weShape : normShape;
+
+      for (let h = 0; h < 24; h++) {
+        for (let q = 0; q < 4; q++) {
+          let kwh = dailyKwh * useShape[h] / 4;
+          // Per-interval noise: +/-40%
+          kwh *= (0.6 + Math.random() * 0.8);
+          // Summer night AC: extra load 23:00-06:00 in Jun-Sep
+          if (m >= 5 && m <= 8 && (h >= 23 || h <= 5)) {
+            kwh *= 1.2 + Math.random() * 0.8;
+          }
+          // Winter evening heating: Dec-Feb 17:00-23:00
+          if ((m <= 1 || m === 11) && h >= 17 && h <= 23) {
+            kwh *= 1.0 + Math.random() * 0.2;
+          }
+          // Summer daytime AC: Jun-Sep 11:00-17:00
+          if (m >= 5 && m <= 8 && h >= 11 && h <= 17) {
+            kwh *= 1.0 + Math.random() * 0.3;
+          }
+          kwh = Math.max(0.005, Math.round(kwh * 1000) / 1000);
+          readings.push({ monthKey, dayKey, hour: h, kwh, isWeekend, dateObj });
+        }
+      }
+    }
+  }
+  return readings;
+}
+
+function loadDemo() {
+  const readings = generateDemoData();
+  D = aggregateData(readings);
+  document.getElementById('uploadScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  initDashboard('DEMO-2025');
+}
 
 function handleFile(file) {
   errorDiv.style.display='none';
